@@ -87,20 +87,24 @@ def execute(action, prerun, postrun, cwd):
     """Perform an action"""
     repo = util.cdrepo()
 
+    import pdb; pdb.set_trace()
     if prerun is not None:
-        retcode = subprocess.call(shlex.split(prerun), cwd=cwd, shell=True)
-        if retcode != 0:
-            import pdb; pdb.set_trace()
+        for cmd in prerun.split(';'):
+            retcode = subprocess.call(cmd, cwd=cwd, shell=True)
+            if retcode != 0:
+                import pdb; pdb.set_trace()
 
     record(m='before action')
 
-    retcode = subprocess.call(shlex.split(action), cwd=cwd, shell=True)
-    if retcode != 0:
-        import pdb; pdb.set_trace()
+    for cmd in action.split(';'):
+        retcode = subprocess.call(cmd, cwd=cwd, shell=True)
+        if retcode != 0:
+            import pdb; pdb.set_trace()
 
     record(m='after action')
 
     if postrun is not None:
-        retcode = subprocess.call(shlex.split(postrun), cwd=cwd, shell=True)
-        if retcode != 0:
-            import pdb; pdb.set_trace()
+        for cmd in postrun.split(';'):
+            retcode = subprocess.call(cmd, cwd=cwd, shell=True)
+            if retcode != 0:
+                import pdb; pdb.set_trace()
