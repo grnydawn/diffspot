@@ -3,7 +3,7 @@
 import os
 import sh
 import logging
-from .util import shortSHA
+import util
 import subprocess
 import shlex
 try:
@@ -17,7 +17,7 @@ MONITORS = 'monitors'
 
 # create an empty project 
 def init(repo):
-    """Create directory for repo and initialize .git directory."""
+    """Create a project."""
 
     sh.git.init(repo)
 
@@ -36,47 +36,71 @@ def init(repo):
 
 # add file content to project
 def register(contents):
-    """Add file contents."""
+    """Register objects into a project."""
 
-    index = os.path.join(os.getcwd(), '.git', 'stateindex')
+    repo = util.cdrepo()
+
+    index = os.path.join(repo, '.git', 'stateindex')
     config = configparser.ConfigParser()
     config.read(index)
 
     for idx, content in enumerate(contents):
         if os.path.exists(content):
-            shaname = os.path.basename(content)+'_'+shortSHA(content)
-            sh.cp(content, os.path.join(os.getcwd(), STATES, shaname), '-rpf')
-            sh.git.add('states')
+            shaname = os.path.basename(content)+'_'+util.shortSHA(content)
+            shapath = os.path.join(repo, STATES, shaname)
+            sh.rm(shapath, '-rf')
+            sh.cp(content, shapath, '-rpf')
             config.set('path', shaname, content)
         else:
             logging.error('{} is not found.'.format(content))
 
+    sh.git.add('states')
+
     with open(index, 'w') as fh:
         config.write(fh)
 
-def record():
+def record(**kwargs):
+    """Save states into a project"""
 
-    # copy all contents into states
+    if 'm' not in kwargs:
+        kwargs['m'] ='None'
 
-    sh.git.commit(m='test')
+    repo = util.cdrepo()
+    index = os.path.join(repo, '.git', 'stateindex')
+    config = configparser.ConfigParser()
+    config.read(index)
+
+    for shaname, content in config.items('path'):
+        shapath = os.path.join(repo, STATES, shaname)
+        sh.rm(shapath, '-rf')
+        sh.cp(content, shapath, '-rpf')
+
+    timestamp = os.path.join(repo, 'states', 'timestamp')
+    with open(timestamp, 'w') as fh:
+        fh.write('{}\n'.format(util.datetimestr()))
+
+    sh.git.add('states')
+    sh.git.commit(**kwargs)
 
 
 def execute(action, prerun, postrun, cwd):
     """Perform an action"""
+    repo = util.cdrepo()
 
-    import pdb; pdb.set_trace()
     if prerun is not None:
-        subprocess.call(shlex.split(prerun), cwd=cwd, shell=True)
+        retcode = subprocess.call(shlex.split(prerun), cwd=cwd, shell=True)
+        if retcode != 0:
+            import pdb; pdb.set_trace()
 
-    # copy all contents into states
+    record(m='before action')
 
-    sh.git.commit(m='before action')
+    retcode = subprocess.call(shlex.split(action), cwd=cwd, shell=True)
+    if retcode != 0:
+        import pdb; pdb.set_trace()
 
-    subprocess.call(shlex.split(action), cwd=cwd, shell=True)
-
-    # copy all contents into states
-
-    sh.git.commit(m='after action')
+    record(m='after action')
 
     if postrun is not None:
-        subprocess.call(shlex.split(postrun), cwd=cwd, shell=True)
+        retcode = subprocess.call(shlex.split(postrun), cwd=cwd, shell=True)
+        if retcode != 0:
+            import pdb; pdb.set_trace()
