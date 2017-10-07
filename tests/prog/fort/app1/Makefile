@@ -1,4 +1,4 @@
-testOG := add.f90
+PROG := add.f90
 FC := gfortran
 
 build:

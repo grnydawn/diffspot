@@ -56,18 +56,25 @@ def register(contents):
 
 def record():
 
+    # copy all contents into states
+
     sh.git.commit(m='test')
 
 
 def execute(action, prerun, postrun, cwd):
     """Perform an action"""
 
+    import pdb; pdb.set_trace()
     if prerun is not None:
         subprocess.call(shlex.split(prerun), cwd=cwd, shell=True)
+
+    # copy all contents into states
 
     sh.git.commit(m='before action')
 
     subprocess.call(shlex.split(action), cwd=cwd, shell=True)
+
+    # copy all contents into states
 
     sh.git.commit(m='after action')
 
